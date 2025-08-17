@@ -504,6 +504,7 @@ test.describe('Base64 Encoder/Decoder 测试', () => {
   });
 
   test('边界测试 - 单字符编码解码', async ({ page }) => {
+    
     const testCases = [
       { char: 'A', expected: 'QQ==' },
       { char: '1', expected: 'MQ==' },
@@ -512,27 +513,36 @@ test.describe('Base64 Encoder/Decoder 测试', () => {
     ];
     
     for (const testCase of testCases) {
+      // 刷新页面确保干净的状态
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+      
       // 编码测试
       await TestHelpers.performEncoding({
         page,
         input: testCase.char
       });
       
+      // 使用与其他测试一致的输出定位器
+      const outputLocator = page.locator('div.w-full.h-80.overflow-auto');
       await TestHelpers.assertBase64Encoding({
-        outputLocator: page.locator('div.w-full.h-80.overflow-auto'),
+        outputLocator,
         input: testCase.char,
         expectedOutput: testCase.expected,
         testName: `单字符编码测试 - ${testCase.char}`
       });
       
-      // 解码测试
+      // 解码测试 - 重新加载页面确保状态重置
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+      
       await TestHelpers.performDecoding({
         page,
         input: testCase.expected
       });
       
       await TestHelpers.assertBase64Decoding({
-        outputLocator: page.locator('div.w-full.h-80.overflow-auto'),
+        outputLocator,
         input: testCase.expected,
         expectedOutput: testCase.char,
         testName: `单字符解码测试 - ${testCase.char}`
