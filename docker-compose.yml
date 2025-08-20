@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Playwright 测试服务
+  playwright-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: playwright-tests
+    environment:
+      - NODE_ENV=production
+      - CI=true
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    volumes:
+      # 挂载测试报告目录
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+      # 挂载测试文件（开发时使用）
+      - ./tests:/app/tests:ro
+      - ./playwright.config.ts:/app/playwright.config.ts:ro
+    networks:
+      - playwright-network
+    # 默认不自动启动，通过命令手动运行测试
+    profiles:
+      - manual
+    command: npm run test:ci
+
+  # 测试报告 Web 服务
+  report-server:
+    image: nginx:alpine
+    container_name: playwright-report-server
+    ports:
+      - "8080:80"
+    volumes:
+      - ./playwright-report:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - playwright-network
+    depends_on:
+      - playwright-tests
+    restart: unless-stopped
+
+  # 定时任务服务（可选）
+  test-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    container_name: playwright-scheduler
+    environment:
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-0 2 * * *}  # 默认每天凌晨2点
+      - BASE_URL=${BASE_URL:-http://localhost:3000}
+    volumes:
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+      - ./logs:/app/logs
+    networks:
+      - playwright-network
+    profiles:
+      - scheduler
+    restart: unless-stopped
+
+networks:
+  playwright-network:
+    driver: bridge
+
+volumes:
+  playwright-reports:
+    driver: local
+  test-results:
+    driver: local

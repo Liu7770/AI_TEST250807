@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TestHelpers } from '../../../utils/test-helpers';
+import { TestHelpers } from '../utils/test-helpers';
 
 test.describe('Dev Forge Base Converter工具页面', () => {
 

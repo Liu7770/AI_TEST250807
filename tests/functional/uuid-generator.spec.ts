@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TestHelpers } from '../../../utils/test-helpers';
+import { TestHelpers } from '../utils/test-helpers';
 
 test.describe('UUID Generator Tool 测试', () => {
 
