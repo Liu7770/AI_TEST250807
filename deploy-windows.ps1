@@ -282,6 +282,21 @@ $exitCode = $LASTEXITCODE
 # 生成测试报告
 if (Test-Path "playwright-report\index.html") {
     Write-Host "测试报告已生成: $(Get-Location)\playwright-report\index.html" -ForegroundColor Green
+    
+    # 自动启动报告服务（绑定到所有接口）
+    Write-Host "启动 Playwright 报告服务..." -ForegroundColor Yellow
+    # 停止可能存在的报告服务
+    Get-Process | Where-Object { $_.ProcessName -eq "node" -and $_.CommandLine -like "*playwright*show-report*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+    # 启动报告服务
+    Start-Process -FilePath "npx" -ArgumentList "playwright", "show-report", "--host", "0.0.0.0", "--port", "9323" -WindowStyle Hidden
+    Start-Sleep -Seconds 2
+    $reportProcess = Get-Process | Where-Object { $_.ProcessName -eq "node" -and $_.CommandLine -like "*playwright*show-report*" }
+    if ($reportProcess) {
+        $localIP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -ne "127.0.0.1" -and $_.PrefixOrigin -eq "Dhcp" }).IPAddress | Select-Object -First 1
+        Write-Host "报告服务已启动: http://$localIP:9323" -ForegroundColor Green
+    } else {
+        Write-Host "报告服务启动失败，请手动启动" -ForegroundColor Red
+    }
 }
 
 exit $exitCode
@@ -420,7 +435,9 @@ function Show-DeploymentInfo {
     Write-Host "  - 更新项目: Set-Location '$ProjectPath'; git pull"
     Write-Host "  - 重新安装依赖: Set-Location '$ProjectPath'; npm install"
     Write-Host "  - 更新浏览器: Set-Location '$ProjectPath'; npx playwright install"
-    Write-Host "  - 查看测试报告: Set-Location '$ProjectPath'; npx playwright show-report"
+    Write-Host "  - 启动报告服务: Set-Location '$ProjectPath'; Start-Process -FilePath 'npx' -ArgumentList 'playwright', 'show-report', '--host', '0.0.0.0', '--port', '9323' -WindowStyle Hidden"
+    Write-Host "  - 查看报告服务状态: Get-Process | Where-Object { `$_.ProcessName -eq 'node' -and `$_.CommandLine -like '*playwright*show-report*' }"
+    Write-Host "  - 停止报告服务: Get-Process | Where-Object { `$_.ProcessName -eq 'node' -and `$_.CommandLine -like '*playwright*show-report*' } | Stop-Process -Force"
     Write-Host "  - 运行特定测试: .\run-tests-production.ps1 -TestPattern 'tests/specific.spec.ts'"
     Write-Host "  - 调试模式: .\run-tests-production.ps1 -Debug -Headed"
 }

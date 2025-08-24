@@ -86,10 +86,40 @@ npx playwright test --project=firefox
 npx playwright test --project=webkit
 ```
 
-### 生成测试报告
+### 生成和查看测试报告
+
+#### 生成HTML报告
 ```bash
 npx playwright test --reporter=html
 ```
+
+#### 查看测试报告
+
+**本地开发环境：**
+```bash
+# 启动报告服务（本地访问）
+npx playwright show-report
+```
+
+**服务器部署环境：**
+```bash
+# 启动报告服务（外部访问）
+npx playwright show-report --host 0.0.0.0 --port 9323
+
+# 后台运行报告服务
+nohup npx playwright show-report --host 0.0.0.0 --port 9323 > playwright-report.log 2>&1 &
+
+# 查看服务状态
+pgrep -f "playwright.*show-report"
+
+# 停止报告服务
+pkill -f "playwright.*show-report"
+```
+
+**访问报告：**
+- 本地：浏览器会自动打开报告页面
+- 服务器：通过 `http://服务器IP:9323` 访问
+- 确保防火墙已开放9323端口
 
 ## 测试配置
 

@@ -157,20 +157,34 @@ install_nodejs() {
         NODE_VERSION=$(node --version)
         log_info "Node.js 已安装: $NODE_VERSION"
         
-        # 检查版本是否满足要求 (>= 16)
+        # 检查版本是否满足要求 (>= 18，Playwright 要求)
         NODE_MAJOR_VERSION=$(echo $NODE_VERSION | cut -d'.' -f1 | sed 's/v//')
-        if [[ $NODE_MAJOR_VERSION -ge 16 ]]; then
-            log_success "Node.js 版本满足要求"
+        if [[ $NODE_MAJOR_VERSION -ge 18 ]]; then
+            log_success "Node.js 版本满足要求 (>= 18)"
             return
         else
-            log_warning "Node.js 版本过低，需要升级"
+            log_warning "Node.js 版本 $NODE_VERSION 不满足 Playwright 要求 (需要 >= 18)"
+            log_info "正在升级 Node.js..."
+            
+            # 处理版本冲突 - 完全卸载旧版本
+            log_info "卸载旧版本 Node.js..."
+            if command -v dnf &> /dev/null; then
+                dnf remove -y nodejs npm nodejs-full-i18n 2>/dev/null || true
+            else
+                yum remove -y nodejs npm nodejs-full-i18n 2>/dev/null || true
+            fi
+            
+            # 清理残留文件
+            rm -rf /usr/bin/node /usr/bin/npm /usr/lib/node_modules 2>/dev/null || true
         fi
     fi
     
     # 安装 NodeSource 仓库
+    log_info "配置 NodeSource 仓库..."
     curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
     
-    # 安装 Node.js
+    # 安装 Node.js 18.x
+    log_info "安装 Node.js 18.x..."
     if command -v dnf &> /dev/null; then
         dnf install -y nodejs
     else
@@ -289,8 +303,25 @@ install_project_dependencies() {
     
     cd "$PROJECT_DIR"
     
+    # 检查当前 Node.js 版本
+    CURRENT_NODE_VERSION=$(node --version)
+    NODE_VERSION_FILE=".node_version_cache"
+    
+    # 检查是否需要重新安装依赖（Node.js 版本变化或首次安装）
+    FORCE_REINSTALL=false
+    if [[ -f "$NODE_VERSION_FILE" ]]; then
+        CACHED_VERSION=$(cat "$NODE_VERSION_FILE")
+        if [[ "$CACHED_VERSION" != "$CURRENT_NODE_VERSION" ]]; then
+            log_info "检测到 Node.js 版本变化: $CACHED_VERSION -> $CURRENT_NODE_VERSION"
+            FORCE_REINSTALL=true
+        fi
+    else
+        log_info "首次部署，记录 Node.js 版本"
+        FORCE_REINSTALL=true
+    fi
+    
     # 检查 node_modules 是否存在且不为空
-    if [[ -d "node_modules" && "$(ls -A node_modules 2>/dev/null)" ]]; then
+    if [[ -d "node_modules" && "$(ls -A node_modules 2>/dev/null)" ]] && [[ "$FORCE_REINSTALL" == "false" ]]; then
         log_info "node_modules 已存在，检查 package.json 是否有更新..."
         # 检查 package-lock.json 是否比 node_modules 新
         if [[ "package-lock.json" -nt "node_modules" ]] || [[ "package.json" -nt "node_modules" ]]; then
@@ -300,8 +331,14 @@ install_project_dependencies() {
             log_success "npm 依赖已是最新，跳过安装"
         fi
     else
+        if [[ "$FORCE_REINSTALL" == "true" ]]; then
+            log_info "由于 Node.js 版本变化，清理并重新安装依赖..."
+            rm -rf node_modules package-lock.json 2>/dev/null || true
+        fi
         log_info "安装 npm 依赖..."
         npm install
+        # 记录当前 Node.js 版本
+        echo "$CURRENT_NODE_VERSION" > "$NODE_VERSION_FILE"
     fi
     
     # 检查 Playwright 浏览器是否已安装
@@ -395,6 +432,19 @@ kill $XVFB_PID 2>/dev/null || true
 # 生成测试报告
 if [[ -f "playwright-report/index.html" ]]; then
     echo "测试报告已生成: $(pwd)/playwright-report/index.html"
+    
+    # 自动启动报告服务（绑定到所有接口）
+    echo "启动 Playwright 报告服务..."
+    # 停止可能存在的报告服务
+    pkill -f "playwright.*show-report" 2>/dev/null || true
+    # 启动报告服务
+    nohup npx playwright show-report --host 0.0.0.0 --port 9323 > playwright-report.log 2>&1 &
+    sleep 2
+    if pgrep -f "playwright.*show-report" > /dev/null; then
+        echo "报告服务已启动: http://$(hostname -I | awk '{print $1}'):9323"
+    else
+        echo "报告服务启动失败，请手动启动"
+    fi
 fi
 
 exit $TEST_EXIT_CODE
@@ -594,8 +644,24 @@ show_deployment_info() {
     log_info "运行测试: cd $PROJECT_DIR && ./run-tests-production.sh"
     log_info "CI 测试: cd $PROJECT_DIR && ./ci-test.sh"
     
+    # 启动 Playwright 报告服务
+    if [[ -d "$PROJECT_DIR/playwright-report" ]]; then
+        log_info "启动 Playwright 报告服务..."
+        cd "$PROJECT_DIR"
+        # 停止可能存在的报告服务
+        pkill -f "playwright.*show-report" 2>/dev/null || true
+        # 启动报告服务，绑定到所有接口
+        nohup npx playwright show-report --host 0.0.0.0 --port 9323 > playwright-report.log 2>&1 &
+        sleep 2
+        if pgrep -f "playwright.*show-report" > /dev/null; then
+            log_success "Playwright 报告服务已启动: http://$(hostname -I | awk '{print $1}'):9323"
+        else
+            log_warning "Playwright 报告服务启动失败，请手动启动"
+        fi
+    fi
+    
     if systemctl is-active --quiet nginx; then
-        log_info "测试报告: http://$(hostname -I | awk '{print $1}'):8080"
+        log_info "Nginx 托管报告: http://$(hostname -I | awk '{print $1}'):8080"
     fi
     
     log_info "查看日志: tail -f $PROJECT_DIR/test-cron.log"
@@ -604,7 +670,15 @@ show_deployment_info() {
     echo "  - 更新项目: cd $PROJECT_DIR && git pull"
     echo "  - 重新安装依赖: cd $PROJECT_DIR && npm install"
     echo "  - 更新浏览器: cd $PROJECT_DIR && npx playwright install"
-    echo "  - 查看测试报告: cd $PROJECT_DIR && npx playwright show-report"
+    echo "  - 启动报告服务: cd $PROJECT_DIR && nohup npx playwright show-report --host 0.0.0.0 --port 9323 > playwright-report.log 2>&1 &"
+    echo "  - 查看报告服务状态: pgrep -f 'playwright.*show-report'"
+    echo "  - 停止报告服务: pkill -f 'playwright.*show-report'"
+    echo
+    log_info "故障排除:"
+    echo "  - Node.js 版本问题: node --version (需要 >= 18)"
+    echo "  - 强制重新安装: rm -rf node_modules package-lock.json && npm install"
+    echo "  - 清理 Playwright: npx playwright uninstall && npx playwright install"
+    echo "  - 检查系统依赖: dnf list installed | grep -E 'gtk3|libX11|mesa-libgbm'"
 }
 
 # 主函数

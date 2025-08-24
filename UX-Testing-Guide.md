@@ -80,9 +80,22 @@ npx playwright test --grep="UX验证"
 # 生成HTML报告
 npx playwright test --grep="UX验证" --reporter=html
 
-# 查看HTML报告
+# 启动报告服务（本地查看）
 npx playwright show-report
+
+# 启动报告服务（外部访问，适用于服务器部署）
+npx playwright show-report --host 0.0.0.0 --port 9323
 ```
+
+### 访问测试报告
+
+**本地开发环境：**
+- 运行 `npx playwright show-report` 后，浏览器会自动打开报告页面
+
+**服务器部署环境：**
+- 部署脚本会自动启动报告服务，绑定到 `0.0.0.0:9323`
+- 通过浏览器访问：`http://服务器IP:9323`
+- 确保防火墙已开放9323端口
 
 在HTML测试报告中，UX问题会显示为失败的测试用例，点击可查看详细的错误信息和改进建议。
 

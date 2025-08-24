@@ -8,8 +8,9 @@
 ### 1. 上传脚本到服务器
 ```bash
 # 方法1: 使用scp上传
-scp deploy-centos.sh root@your-server:/tmp/
+# scp deploy-centos.sh root@your-server:/tmp/
 
+scp deploy-centos.sh root@1.117.234.78:/tmp/
 # 方法2: 直接在服务器上创建文件
 # 将脚本内容复制粘贴到服务器上的文件中
 ```
@@ -66,17 +67,42 @@ kill -TERM <进程ID>
 ### 运行测试
 ```bash
 cd /usr/lxq-aitest
-./run-tests-production.sh
+# ./run-tests-production.sh
+# 运行特定测试
+./run-tests-production.sh tests/functional/base64-tool.spec.ts
 ```
 
 ### 查看测试报告
-```bash
-# 本地查看
-cd /usr/lxq-aitest
-npx playwright show-report
 
+#### 自动启动的报告服务（推荐）
+测试完成后，脚本会自动启动 Playwright 报告服务：
+```bash
+# 报告服务会自动绑定到所有网络接口
+# 外部访问地址：http://服务器IP:9323
+http://1.117.234.78:9323
+```
+
+#### 手动管理报告服务
+```bash
+# 启动报告服务（绑定到所有接口）
+cd /usr/lxq-aitest
+nohup npx playwright show-report --host 0.0.0.0 --port 9323 > playwright-report.log 2>&1 &
+
+# 查看服务状态
+pgrep -f "playwright.*show-report"
+
+# 停止报告服务
+pkill -f "playwright.*show-report"
+
+# 查看服务日志
+tail -f /usr/lxq-aitest/playwright-report.log
+```
+
+#### Nginx 托管报告（备选方案）
+```bash
 # 如果安装了Nginx，通过浏览器访问
 http://服务器IP:8080
+http://1.117.234.78:8080
 ```
 
 ### 常用维护命令
@@ -90,16 +116,39 @@ cd /usr/lxq-aitest && npm install
 # 更新浏览器
 cd /usr/lxq-aitest && npx playwright install
 
+# 启动报告服务（外部访问）
+cd /usr/lxq-aitest && nohup npx playwright show-report --host 0.0.0.0 --port 9323 > playwright-report.log 2>&1 &
+
+# 查看报告服务状态
+pgrep -f "playwright.*show-report"
+
+# 停止报告服务
+pkill -f "playwright.*show-report"
+
 # 查看定时任务日志
 tail -f /usr/lxq-aitest/test-cron.log
+
+# 查看报告服务日志
+tail -f /usr/lxq-aitest/playwright-report.log
 ```
 
 ## 注意事项
 
-1. **防火墙设置**：如果安装了Nginx，确保8080端口已开放
+1. **防火墙设置**：
+   - 确保9323端口已开放（Playwright报告服务）
+   - 如果安装了Nginx，确保8080端口已开放
+   - 云服务器需要在安全组中开放这些端口
+
 2. **项目权限**：所有文件将以root用户权限运行
+
 3. **定时任务**：如果设置了定时任务，将在每天凌晨2点自动运行测试
+
 4. **资源监控**：建议监控服务器资源使用情况，特别是在运行大量测试时
+
+5. **报告服务**：
+   - 测试完成后会自动启动报告服务
+   - 服务绑定到0.0.0.0:9323，支持外部访问
+   - 可通过 http://服务器IP:9323 访问测试报告
 
 ## 故障排除
 
