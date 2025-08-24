@@ -599,6 +599,91 @@ export class TestHelpersV2 {
   }
 
   /**
+   * 按钮状态检查 - 提供详细错误信息
+   */
+  static async assertButtonState({
+    page,
+    buttonSelector,
+    buttonText,
+    expectedDisabled = true,
+    testName = '按钮状态检查',
+    config = {}
+  }: {
+    page: Page;
+    buttonSelector: string;
+    buttonText: string;
+    expectedDisabled?: boolean;
+    testName?: string;
+    config?: AssertionConfig;
+  }) {
+    class ButtonStateAssertion extends BaseAssertion {
+      constructor(
+        private page: Page,
+        private buttonSelector: string,
+        private buttonText: string,
+        private expectedDisabled: boolean,
+        config: AssertionConfig
+      ) {
+        super({ testName, ...config });
+      }
+
+      protected async executeAssertion(): Promise<void> {
+        const button = this.page.locator(this.buttonSelector);
+        if (this.expectedDisabled) {
+          await expect(button).toBeDisabled();
+        } else {
+          await expect(button).toBeEnabled();
+        }
+      }
+
+      protected createErrorMessage(): string {
+         // 同步版本，返回基本错误信息
+         return 'Button state assertion failed';
+       }
+
+       protected async createDetailedErrorMessage(): Promise<string> {
+         const button = this.page.locator(this.buttonSelector);
+         const isButtonDisabled = await button.isDisabled();
+         
+         return [
+           `🐛 ${this.config.testName!}失败！`,
+           `❌ ${this.buttonText}按钮状态检查未通过`,
+           `实际按钮状态: ${isButtonDisabled ? '禁用' : '启用'}`,
+           `期望按钮状态: ${this.expectedDisabled ? '禁用' : '启用'}`,
+           `🔧 建议: 空输入时${this.buttonText}按钮应该处于禁用状态，防止用户进行无效操作`
+         ].join('\n');
+       }
+
+      async assert(): Promise<void> {
+        let lastError: Error | null = null;
+        
+        for (let attempt = 0; attempt <= this.config.retryCount!; attempt++) {
+          try {
+            await this.executeAssertion();
+            return;
+          } catch (error) {
+            lastError = error as Error;
+            if (attempt < this.config.retryCount!) {
+              await this.delay(1000);
+            }
+          }
+        }
+        
+        // 创建详细的错误消息
+         const detailedMessage = await this.createDetailedErrorMessage();
+         throw new Error(detailedMessage);
+      }
+
+      private delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+    }
+
+    const assertion = new ButtonStateAssertion(page, buttonSelector, buttonText, expectedDisabled, config);
+    await assertion.assert();
+  }
+
+  /**
    * 实例方法 - 页面标题断言
    */
   async assertPageTitle(
@@ -736,6 +821,11 @@ export namespace Validators {
    * 空输入处理验证
    */
   export const emptyInputHandling = TestHelpersV2.validateEmptyInputHandling;
+  
+  /**
+   * 按钮状态检查
+   */
+  export const buttonState = TestHelpersV2.assertButtonState;
 }
 
 /**

@@ -99,12 +99,67 @@ npx playwright show-report --host 0.0.0.0 --port 9323
 
 在HTML测试报告中，UX问题会显示为失败的测试用例，点击可查看详细的错误信息和改进建议。
 
+## 高级功能：详细按钮状态检查
+
+### 使用test-helpers-v2.ts中的按钮状态检查
+
+对于需要更详细错误信息的按钮状态检查，可以使用`test-helpers-v2.ts`中的新方法：
+
+```typescript
+import { Validators } from '../utils/test-helpers-v2';
+
+// 基本使用
+await Validators.buttonState({
+  page,
+  buttonSelector: '#submit-button',
+  buttonText: '提交',
+  expectedDisabled: true,
+  testName: '空表单提交按钮状态检查'
+});
+
+// 带配置的使用
+await Validators.buttonState({
+  page,
+  buttonSelector: '.action-button',
+  buttonText: '操作',
+  expectedDisabled: false,
+  testName: '有效输入后操作按钮状态检查',
+  config: {
+    retryCount: 3,
+    timeout: 10000
+  }
+});
+```
+
+### 详细错误信息格式
+
+当按钮状态检查失败时，会显示如下格式的详细错误信息：
+
+```
+🐛 [测试名称]失败！
+❌ [按钮文本]按钮状态检查未通过
+实际按钮状态: [启用/禁用]
+期望按钮状态: [启用/禁用]
+🔧 建议: 空输入时[按钮文本]按钮应该处于禁用状态，防止用户进行无效操作
+```
+
+### 实际示例
+
+```
+🐛 空输入时清空按钮状态检查失败！
+❌ 清空按钮状态检查未通过
+实际按钮状态: 启用
+期望按钮状态: 禁用
+🔧 建议: 空输入时清空按钮应该处于禁用状态，防止用户进行无效操作
+```
+
 ## 最佳实践
 
 1. **明确描述**: 清楚描述期望行为和实际行为的差异
 2. **具体建议**: 提供可操作的改进建议
 3. **用户视角**: 从用户体验角度描述问题
 4. **及时修复**: 将UX问题视为功能缺陷，及时修复
+5. **使用合适的工具**: 对于需要详细错误信息的场景，使用`test-helpers-v2.ts`中的高级方法
 
 ## 总结
 

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { TestHelpers } from '../utils/test-helpers';
+import { Validators } from '../utils/test-helpers-v2';
 
 test.describe('Dev Forge Base Converter工具页面', () => {
 
@@ -856,6 +857,25 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     const hexText = await page.locator(hexResult).textContent();
     expect(hexText?.trim()).not.toBe('');
     expect(hexText?.trim()).not.toBe('—');
+  });
+
+  test('空输入时按钮状态检查 - 详细错误信息', async ({ page }) => {
+    // 清空输入框
+    await page.fill(numberInput, '');
+    await page.waitForTimeout(500);
+    
+    // 使用新的按钮状态检查方法，提供详细的错误信息
+    await Validators.buttonState({
+      page,
+      buttonSelector: clearButton,
+      buttonText: '清空',
+      expectedDisabled: true,
+      testName: '空输入时清空按钮状态检查',
+      config: {
+        retryCount: 2,
+        timeout: 5000
+      }
+    });
   });
 
 });
