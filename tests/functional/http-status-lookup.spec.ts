@@ -31,8 +31,11 @@ test.describe('Dev Forge HTTP Status Lookup工具页面', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    // 验证页面标题
-    await expect(page).toHaveTitle(/HTTP|Status|Lookup/);
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
+    
+    // 验证模块名称显示
+    await expect(page.getByText('HTTP Status Lookup').first()).toBeVisible();
     
     // 验证状态码输入框存在
     const statusInputElement = page.locator(statusInput);

@@ -25,25 +25,21 @@ test.describe('Dev Forge Crontab工具页面', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    // 验证页面标题
-    await expect(page).toHaveTitle(/Crontab/);
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
     
-    // 验证主要元素存在
+    // 验证模块名称显示
+    await expect(page.getByText('Crontab Tool').first()).toBeVisible();
+    
+    // 验证主要功能元素存在
     const cronInputElement = page.locator(cronInput);
     if (await cronInputElement.count() > 0) {
       await expect(cronInputElement.first()).toBeVisible();
     }
     
     // 验证按钮存在
-    const generateBtn = page.locator(generateButton);
-    if (await generateBtn.count() > 0) {
-      await expect(generateBtn.first()).toBeVisible();
-    }
-    
-    const validateBtn = page.locator(validateButton);
-    if (await validateBtn.count() > 0) {
-      await expect(validateBtn.first()).toBeVisible();
-    }
+    await expect(page.getByRole('button', { name: 'Validate / Explain' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
 
   test('有效Cron表达式验证测试', async ({ page }) => {

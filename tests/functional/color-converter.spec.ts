@@ -30,8 +30,11 @@ test.describe('Dev Forge Color Converter工具页面', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    // 验证页面标题
-    await expect(page).toHaveTitle(/Color|Converter/);
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
+    
+    // 验证模块名称显示
+    await expect(page.getByText('Color Converter').first()).toBeVisible();
     
     // 验证HEX输入框存在
     const hexInputElement = page.locator(hexInput);

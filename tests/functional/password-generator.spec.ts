@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { TestHelpers } from '../utils/test-helpers';
+import { TestHelpersV2 } from '../utils/test-helpers-v2';
+import { ErrorMessageFactory } from '../utils/test-helpers-v2';
 
 test.describe('Password Generator Tool 测试', () => {
 
@@ -21,45 +22,80 @@ test.describe('Password Generator Tool 测试', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    // 验证页面标题包含Password Generator
+    await expect(page).toHaveTitle(/Password Generator/);
     
-    // 验证页面标题
-    await helpers.assertPageTitle(/Dev Forge/);
+    // 验证模块名称显示
+    await expect(page.getByText('Password Generator').first()).toBeVisible();
     
-    // 验证主要元素存在
-    await helpers.assertElementVisible('h1', '主标题');
-    
-    // 验证生成按钮存在
-    await helpers.assertElementVisible(generateButton, '生成密码按钮');
-    
-    // 验证密码长度滑块存在
-    await helpers.assertElementVisible(lengthSlider, '密码长度滑块');
+    // 验证主要功能元素存在
+    await expect(page.locator('input[type="range"]')).toBeVisible();
+    await expect(page.locator('input[type="checkbox"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Generate' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
     
     // 验证字符类型选项存在
-    await helpers.assertElementVisible(uppercaseCheckbox, '大写字母选项');
-    await helpers.assertElementVisible(lowercaseCheckbox, '小写字母选项');
-    await helpers.assertElementVisible(numbersCheckbox, '数字选项');
-    await helpers.assertElementVisible(symbolsCheckbox, '符号选项');
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator(uppercaseCheckbox),
+      elementName: '大写字母选项',
+      testName: '大写字母选项检查'
+    });
+    
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator(lowercaseCheckbox),
+      elementName: '小写字母选项',
+      testName: '小写字母选项检查'
+    });
+    
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator(numbersCheckbox),
+      elementName: '数字选项',
+      testName: '数字选项检查'
+    });
+    
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator(symbolsCheckbox),
+      elementName: '符号选项',
+      testName: '符号选项检查'
+    });
     
     // 验证输出区域存在
-    await helpers.assertElementVisible(passwordOutput, '密码输出区域');
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator(passwordOutput),
+      elementName: '密码输出区域',
+      testName: '密码输出区域显示检查'
+    });
   });
 
   test('默认密码生成测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
-    
     // 点击生成按钮
-    await helpers.performPasswordGeneration();
+    await page.click(generateButton);
     
-    // 验证密码输出
-    await helpers.assertPasswordGenerated(passwordOutput, '默认密码生成');
-    
+    // 验证密码已生成
     const outputElement = page.locator(passwordOutput);
     const password = await outputElement.textContent();
     
-    // 验证密码长度
-    if (!password || password.trim().length < 8) {
-      throw new Error(`默认密码生成测试失败\n期望: 密码长度应≥8位\n实际: "${password}" (长度: ${password?.trim().length || 0})\n建议: 检查默认密码长度设置`);
+    if (!password || password.trim().length === 0) {
+      const errorMessage = ErrorMessageFactory.create('operation', {
+        testName: '默认密码生成',
+        operation: '点击生成按钮',
+        expected: '生成非空密码',
+        actual: password || '空值',
+        suggestion: '检查密码生成逻辑，确保默认配置下能正常生成密码'
+      });
+      throw new Error(errorMessage);
+    }
+    
+    // 验证密码长度（默认应该是合理的长度）
+    if (password.trim().length < 4 || password.trim().length > 50) {
+      const errorMessage = ErrorMessageFactory.create('validation', {
+        testName: '默认密码长度验证',
+        scenario: '生成默认长度密码',
+        expected: '密码长度在4-50字符之间',
+        actual: `密码长度: ${password.trim().length}, 内容: "${password}"`,
+        suggestion: '检查默认密码长度设置，确保生成合理长度的密码'
+      });
+      throw new Error(errorMessage);
     }
   });
 

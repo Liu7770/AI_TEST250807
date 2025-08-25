@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TestHelpersV2, ErrorMessageFactory } from '../utils/test-helpers-v2';
 
 test.describe('Dev Forge 集成测试', () => {
 
@@ -9,11 +10,19 @@ test.describe('Dev Forge 集成测试', () => {
     await page.goto(`${baseUrl}/en`);
     
     // 验证页面加载
-    await expect(page.locator('h1').first()).toBeVisible();
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator('h1').first(),
+      elementName: '首页主标题',
+      testName: '首页加载验证'
+    });
     
     // 导航到JSON工具
     await page.locator('nav').locator('text=JSON Tools').click();
-    await expect(page.locator('textarea')).toBeVisible();
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator('textarea'),
+      elementName: 'JSON工具输入框',
+      testName: 'JSON工具页面元素检查'
+    });
     
     // 测试有效JSON格式化
     const validJson = '{"name":"test","data":[1,2,3],"nested":{"key":"value"}}';
@@ -21,10 +30,22 @@ test.describe('Dev Forge 集成测试', () => {
     await page.locator('button').filter({ hasText: 'Format' }).click();
     
     // 验证格式化结果
-    await expect(page.locator('pre')).toBeVisible();
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator('pre'),
+      elementName: 'JSON格式化结果区域',
+      testName: 'JSON格式化结果显示检查'
+    });
+    
     const formattedResult = await page.locator('pre').textContent();
-    expect(formattedResult).toContain('name');
-    expect(formattedResult).toContain('test');
+    if (!formattedResult?.includes('name') || !formattedResult?.includes('test')) {
+      const errorMessage = ErrorMessageFactory.create('assertion', {
+        testName: 'JSON格式化内容验证',
+        expected: '包含"name"和"test"字段的格式化JSON',
+        actual: formattedResult || '空内容',
+        suggestion: '检查JSON格式化功能是否正常工作，确认输入的JSON被正确解析和格式化'
+      });
+      throw new Error(errorMessage);
+    }
     
     // 测试无效JSON处理
     await page.locator('textarea').clear();
@@ -32,7 +53,11 @@ test.describe('Dev Forge 集成测试', () => {
     await page.locator('button').filter({ hasText: 'Format' }).click();
     
     // 验证错误信息显示
-    await expect(page.locator('text=Invalid JSON: Unexpected')).toBeVisible();
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator('text=Invalid JSON: Unexpected'),
+      elementName: 'JSON错误提示信息',
+      testName: '无效JSON错误处理验证'
+    });
     
     // 清空输入测试
     await page.locator('textarea').clear();
@@ -40,7 +65,15 @@ test.describe('Dev Forge 集成测试', () => {
     
     // 验证空输入处理
     const emptyResult = await page.locator('pre').textContent();
-    expect(emptyResult).toBe('');
+    if (emptyResult !== '') {
+      const errorMessage = ErrorMessageFactory.create('assertion', {
+        testName: '空输入处理验证',
+        expected: '空字符串',
+        actual: emptyResult || 'null',
+        suggestion: '检查空输入时是否正确清空了输出区域'
+      });
+      throw new Error(errorMessage);
+    }
   });
 
   test('完整工作流程测试 - Base64工具', async ({ page }) => {
@@ -48,7 +81,11 @@ test.describe('Dev Forge 集成测试', () => {
     
     // 导航到Base64工具
     await page.locator('nav').locator('text=Base64 Tools').click();
-    await expect(page.locator('textarea')).toBeVisible();
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator('textarea'),
+      elementName: 'Base64工具输入框',
+      testName: 'Base64工具页面元素检查'
+    });
     
     // 测试编码功能
     await page.locator('div.p-1 button').filter({ hasText: 'Encode' }).click();
@@ -62,8 +99,25 @@ test.describe('Dev Forge 集成测试', () => {
     
     // 获取编码结果
     const encodedValue = await page.locator('textarea').inputValue();
-    expect(encodedValue).not.toBe(testText); // 应该已经被编码
-    expect(encodedValue.length).toBeGreaterThan(0);
+    if (encodedValue === testText) {
+      const errorMessage = ErrorMessageFactory.create('assertion', {
+        testName: 'Base64编码功能验证',
+        expected: '编码后的Base64字符串（与原文不同）',
+        actual: encodedValue,
+        suggestion: '检查Base64编码功能是否正常工作，确认输入文本被正确编码'
+      });
+      throw new Error(errorMessage);
+    }
+    
+    if (encodedValue.length === 0) {
+      const errorMessage = ErrorMessageFactory.create('assertion', {
+        testName: 'Base64编码结果长度验证',
+        expected: '非空的编码结果',
+        actual: '空字符串',
+        suggestion: '检查编码过程是否完成，确认输入文本不为空'
+      });
+      throw new Error(errorMessage);
+    }
     
     // 测试解码功能
     await page.locator('div.p-1 button').filter({ hasText: 'Decode' }).click();
@@ -74,7 +128,15 @@ test.describe('Dev Forge 集成测试', () => {
     
     // 验证解码结果
     const decodedValue = await page.locator('textarea').inputValue();
-    expect(decodedValue).toBe(testText);
+    if (decodedValue !== testText) {
+      const errorMessage = ErrorMessageFactory.create('assertion', {
+        testName: 'Base64解码功能验证',
+        expected: testText,
+        actual: decodedValue,
+        suggestion: '检查Base64解码功能是否正常工作，确认编码的文本被正确解码回原文'
+      });
+      throw new Error(errorMessage);
+    }
   });
 
   test('跨工具导航测试', async ({ page }) => {
@@ -95,7 +157,11 @@ test.describe('Dev Forge 集成测试', () => {
     await page.locator('nav').locator('text=JSON Tools').click();
     
     // 验证页面状态
-    await expect(page.locator('textarea')).toBeVisible();
+    await TestHelpersV2.assertElementVisible({
+      locator: page.locator('textarea'),
+      elementName: '返回JSON工具后的输入框',
+      testName: '跨工具导航状态验证'
+    });
     
     // 再次切换到Base64工具验证状态
     await page.locator('nav').locator('text=Base64 Tools').click();

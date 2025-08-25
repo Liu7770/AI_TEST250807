@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { TestHelpers } from '../utils/test-helpers';
-import { Validators } from '../utils/test-helpers-v2';
+import { TestHelpersV2 } from '../utils/test-helpers-v2';
+import { ErrorMessageFactory } from '../utils/test-helpers-v2';
 
 test.describe('Dev Forge Base Converter工具页面', () => {
 
@@ -27,41 +27,47 @@ test.describe('Dev Forge Base Converter工具页面', () => {
 
   test('页面基本元素存在性测试', async ({ page }) => {
     
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
+    
+    // 验证模块名称显示
+    await expect(page.getByText('Base Converter').first()).toBeVisible();
+    
     // 验证输入控件存在
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: page.locator(numberInput),
       elementName: '数字输入框'
     });
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: page.locator(inputBaseSelect),
       elementName: '输入进制选择器'
     });
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: page.locator(clearButton),
       elementName: '清空按钮'
     });
     
     // 验证结果区域存在
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: page.locator(binaryResult),
       elementName: '二进制结果区域'
     });
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: page.locator(octalResult),
       elementName: '八进制结果区域'
     });
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: page.locator(decimalResult),
       elementName: '十进制结果区域'
     });
-    await TestHelpers.assertElementVisible({
-      locator: page.locator(hexResult),
-      elementName: '十六进制结果区域'
-    });
+    await TestHelpersV2.assertElementVisible({
+       locator: page.locator(hexResult),
+       elementName: '十六进制结果区域'
+     });
   });
 
   test('十进制转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 选择十进制作为输入进制
     await page.locator(inputBaseSelect).selectOption('10');
@@ -93,7 +99,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('二进制转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 选择二进制作为输入进制
     await page.locator(inputBaseSelect).selectOption('2');
@@ -125,7 +131,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('十进制到十六进制转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十进制
     await page.selectOption(inputBaseSelect, '10');
@@ -154,7 +160,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('十六进制转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十六进制
     await page.selectOption(inputBaseSelect, '16');
@@ -187,7 +193,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('八进制转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为八进制
     await page.selectOption(inputBaseSelect, '8');
@@ -222,13 +228,13 @@ test.describe('Dev Forge Base Converter工具页面', () => {
 
 
   test('无效输入处理测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置为二进制输入并测试无效输入
     await page.selectOption(inputBaseSelect, '2');
     
     // 测试完全无效的输入
-    await TestHelpers.assertGeneralInvalidInputHandling({
+    await TestHelpersV2.assertGeneralInvalidInputHandling({
       page,
       inputSelector: numberInput,
       invalidInput: 'abc',
@@ -238,10 +244,10 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('空输入处理测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 测试空输入处理
-    await TestHelpers.assertGeneralInvalidInputHandling({
+    await TestHelpersV2.assertGeneralInvalidInputHandling({
       page,
       inputSelector: numberInput,
       invalidInput: '',
@@ -251,7 +257,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('大数字转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十进制
     await page.selectOption(inputBaseSelect, '10');
@@ -269,7 +275,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('负数输入处理测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十进制
     await page.selectOption(inputBaseSelect, '10');
@@ -309,7 +315,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     
     // 获取所有复制按钮并点击第一个
     const copyBtns = page.locator(copyButtons);
-    await TestHelpers.assertElementVisible({
+    await TestHelpersV2.assertElementVisible({
       locator: copyBtns.first(),
       elementName: '复制按钮'
     });
@@ -348,7 +354,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('大数值转换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十进制
     await page.selectOption(inputBaseSelect, '10');
@@ -381,7 +387,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('边界值测试 - 零值', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 测试各进制的零值输入
     const testCases = [
@@ -421,7 +427,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('边界值测试 - 最大单字节值', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 测试255（单字节最大值）在各进制下的转换
     const testCases = [
@@ -461,7 +467,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('十六进制字母大小写测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十六进制
     await page.selectOption(inputBaseSelect, '16');
@@ -523,13 +529,13 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('二进制无效字符测试与UX验证', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为二进制
     await page.selectOption(inputBaseSelect, '2');
     
     // 测试完全无效的输入
-    await TestHelpers.assertGeneralInvalidInputHandling({
+    await TestHelpersV2.assertGeneralInvalidInputHandling({
       page,
       inputSelector: numberInput,
       invalidInput: '234',
@@ -566,7 +572,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     // UX问题验证：检查是否有用户反馈机制
     // 注意：这里暴露了UX问题 - 页面静默忽略无效字符"2"，用户不知道发生了什么
     // 理想的UX应该：实时高亮无效字符，显示"已忽略字符2"的提示
-    TestHelpers.failWithUXIssue({
+    TestHelpersV2.failWithUXIssue({
       testName: '二进制无效字符测试与UX验证',
       input: '1012',
       expected: '显示错误提示"2不是有效的二进制字符"或拒绝输入',
@@ -577,13 +583,13 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('八进制无效字符测试与UX验证', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为八进制
     await page.selectOption(inputBaseSelect, '8');
     
     // 测试完全无效的八进制输入
-    await TestHelpers.assertGeneralInvalidInputHandling({
+    await TestHelpersV2.assertGeneralInvalidInputHandling({
       page,
       inputSelector: numberInput,
       invalidInput: 'xyz',
@@ -620,7 +626,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     // UX问题验证：检查是否有用户反馈机制
     // 注意：这里暴露了UX问题 - 页面静默截断输入"789"为"7"，用户不理解八进制规则
     // 理想的UX应该：显示错误提示"8和9不是有效的八进制字符"
-    TestHelpers.failWithUXIssue({
+    TestHelpersV2.failWithUXIssue({
       testName: '八进制无效字符测试与UX验证',
       input: '789',
       expected: '显示错误提示"8和9不是有效的八进制字符"或拒绝输入',
@@ -631,13 +637,13 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('十六进制无效字符测试与UX验证', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十六进制
     await page.selectOption(inputBaseSelect, '16');
     
     // 测试完全无效的十六进制输入
-    await TestHelpers.assertGeneralInvalidInputHandling({
+    await TestHelpersV2.assertGeneralInvalidInputHandling({
       page,
       inputSelector: numberInput,
       invalidInput: 'XYZ',
@@ -674,7 +680,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     // UX问题验证：检查是否有用户反馈机制
     // 注意：这里暴露了UX问题 - 页面静默截断输入"1G2"为"1"，用户不知道G和2被忽略
     // 理想的UX应该：实时高亮无效字符，显示"G和2不是有效的十六进制字符"的提示
-    TestHelpers.failWithUXIssue({
+    TestHelpersV2.failWithUXIssue({
       testName: '十六进制无效字符测试与UX验证',
       input: '1G2',
       expected: '显示错误提示"G不是有效的十六进制字符"或拒绝输入',
@@ -685,7 +691,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('连续输入测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 测试连续输入不同数值
     const testCases = [
@@ -709,7 +715,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('进制切换测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 输入一个数值，然后切换不同的输入进制
     await page.fill(numberInput, '10');
@@ -779,7 +785,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('小数点输入测试与UX验证', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 设置输入进制为十进制
     await page.selectOption(inputBaseSelect, '10');
@@ -798,7 +804,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     // UX问题验证：检查是否有用户反馈机制
     // 注意：这里暴露了UX问题 - 页面静默截断小数"10.5"为"10"，用户不知道小数部分被忽略
     // 理想的UX应该：显示警告"小数部分已被忽略"或"仅支持整数转换"
-    TestHelpers.failWithUXIssue({
+    TestHelpersV2.failWithUXIssue({
       testName: '小数点输入测试与UX验证',
       input: '10.5',
       expected: '显示警告"小数部分已被忽略"或"仅支持整数转换"',
@@ -808,7 +814,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     });
     
     // 继续使用原有的无效输入处理测试作为补充
-    await TestHelpers.assertGeneralInvalidInputHandling({
+    await TestHelpersV2.assertGeneralInvalidInputHandling({
       page,
       inputSelector: numberInput,
       invalidInput: 'abc.def',
@@ -818,7 +824,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('特殊字符输入测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 测试特殊字符输入
     await page.selectOption(inputBaseSelect, '10');
@@ -826,7 +832,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     const specialChars = ['!@#', '+-*/', '()[]', '  '];
     
     for (const chars of specialChars) {
-      await TestHelpers.assertGeneralInvalidInputHandling({
+      await TestHelpersV2.assertGeneralInvalidInputHandling({
         page,
         inputSelector: numberInput,
         invalidInput: chars,
@@ -837,7 +843,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
   });
 
   test('长数字输入测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    const helpers = new TestHelpersV2(page);
     
     // 测试非常长的数字输入
     await page.selectOption(inputBaseSelect, '10');
@@ -865,7 +871,7 @@ test.describe('Dev Forge Base Converter工具页面', () => {
     await page.waitForTimeout(500);
     
     // 使用新的按钮状态检查方法，提供详细的错误信息
-    await Validators.buttonState({
+    await TestHelpersV2.buttonState({
       page,
       buttonSelector: clearButton,
       buttonText: '清空',

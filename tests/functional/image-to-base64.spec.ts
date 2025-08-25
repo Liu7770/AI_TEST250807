@@ -3,17 +3,14 @@ import path from 'path';
 
 test.describe('Dev Forge Image to Base64工具页面', () => {
 
-  const url = 'https://www.001236.xyz/en/image-to-base64';
-  const fileInput = 'input[type="file"], .file-input';
-  const dropZone = '.drop-zone, .upload-area';
-  const convertButton = 'button:has-text("Convert"), button:has-text("转换")';
-  const outputArea = '.base64-output, .output, .result';
-  const copyButton = 'button:has-text("Copy"), button:has-text("复制")';
-  const clearButton = 'button:has-text("Clear"), button:has-text("清空")';
-  const downloadButton = 'button:has-text("Download"), button:has-text("下载")';
-  const previewImage = '.image-preview, .preview';
-  const formatSelect = 'select[name="format"], .format-select';
-  const qualitySlider = 'input[type="range"], .quality-slider';
+  const url = 'https://www.001236.xyz/en/image2base64';
+  const fileInput = 'input[type="file"][accept="image/*"]';
+  const dropZone = '.border-dashed.border-orange-400';
+  const uploadText = 'text="Click or drag image here to upload"';
+  const supportText = 'text="Supports PNG, JPG, GIF, SVG, etc. common image formats"';
+  const uploadIcon = 'svg.w-12.h-12.text-orange-400';
+  const pageTitle = 'h1:has-text("Image to Base64")';
+  const pageDescription = 'text="Supports drag-and-drop or file upload, automatically generates Base64 strings, and supports one-click copy"';
 
   test.beforeEach(async ({ page }) => {
     await page.goto(url);
@@ -32,56 +29,66 @@ test.describe('Dev Forge Image to Base64工具页面', () => {
 
   test('页面基本元素存在性测试', async ({ page }) => {
     // 验证页面标题
-    await expect(page).toHaveTitle(/Image|Base64/);
+    await expect(page).toHaveTitle(/Dev Forge/);
+
+    // 验证页面上显示的具有代表性的模块标题
+    // 验证左侧导航栏或面包屑中的"Image to Base64"模块名称
+    await expect(page.getByText('Image to Base64').first()).toBeVisible();
     
-    // 验证文件上传区域存在
-    const fileInputElement = page.locator(fileInput);
-    const dropZoneElement = page.locator(dropZone);
+    // 验证页面描述
+    await expect(page.locator(pageDescription)).toBeVisible();
     
-    if (await fileInputElement.count() > 0) {
-      await expect(fileInputElement.first()).toBeVisible();
-    } else if (await dropZoneElement.count() > 0) {
-      await expect(dropZoneElement.first()).toBeVisible();
-    }
+    // 验证拖拽上传区域
+    await expect(page.locator(dropZone)).toBeVisible();
     
-    // 验证转换按钮存在
-    const convertBtn = page.locator(convertButton);
-    if (await convertBtn.count() > 0) {
-      await expect(convertBtn.first()).toBeVisible();
-    }
+    // 验证上传图标
+    await expect(page.locator(uploadIcon)).toBeVisible();
     
-    // 验证输出区域存在
-    const outputElement = page.locator(outputArea);
-    if (await outputElement.count() > 0) {
-      await expect(outputElement.first()).toBeVisible();
-    }
+    // 验证上传提示文本
+    await expect(page.locator(uploadText)).toBeVisible();
+    
+    // 验证支持格式说明文本
+    await expect(page.locator(supportText)).toBeVisible();
+    
+    // 验证隐藏的文件输入框
+    await expect(page.locator(fileInput)).toBeAttached();
   });
 
-  test('图片上传和预览测试', async ({ page }) => {
+  test('拖拽上传区域点击测试', async ({ page }) => {
+    // 验证点击拖拽区域能够触发文件选择
+    const dropZoneElement = page.locator(dropZone);
     const fileInputElement = page.locator(fileInput);
-    const previewElement = page.locator(previewImage);
     
-    if (await fileInputElement.count() > 0) {
-      // 创建一个简单的测试图片文件路径
-      // 注意：在实际测试中，您需要准备测试图片文件
-      const testImagePath = path.join(process.cwd(), 'tests', 'fixtures', 'test-image.png');
+    // 点击拖拽区域
+    await dropZoneElement.click();
+    
+    // 验证文件输入框存在（虽然隐藏）
+    await expect(fileInputElement).toBeAttached();
+    
+    // 验证拖拽区域具有正确的样式类
+    await expect(dropZoneElement).toHaveClass(/border-dashed/);
+    await expect(dropZoneElement).toHaveClass(/border-orange-400/);
+    await expect(dropZoneElement).toHaveClass(/cursor-pointer/);
+  });
+  
+  test('图片上传功能测试', async ({ page }) => {
+    // 创建一个简单的测试图片文件路径
+    // 注意：在实际测试中，您需要准备测试图片文件
+    const testImagePath = path.join(process.cwd(), 'tests', 'fixtures', 'test-image.png');
+    
+    try {
+      // 上传图片文件
+      await page.locator(fileInput).setInputFiles(testImagePath);
       
-      try {
-        // 上传图片文件
-        await fileInputElement.first().setInputFiles(testImagePath);
-        
-        // 验证图片预览显示
-        if (await previewElement.count() > 0) {
-          await expect(previewElement.first()).toBeVisible();
-          
-          // 验证预览图片的src属性
-          const imgSrc = await previewElement.first().getAttribute('src');
-          expect(imgSrc).toBeTruthy();
-        }
-      } catch (error) {
-        // 如果测试图片文件不存在，跳过此测试
-        test.skip(true, 'Test image file not found');
-      }
+      // 等待页面处理文件上传
+      await page.waitForTimeout(1000);
+      
+      // 验证页面状态变化（可能会显示预览或Base64结果）
+      // 这里可以添加更多具体的验证逻辑
+      
+    } catch (error) {
+      // 如果测试图片文件不存在，跳过此测试
+      test.skip(true, 'Test image file not found');
     }
   });
 

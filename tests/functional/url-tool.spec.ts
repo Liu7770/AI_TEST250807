@@ -27,10 +27,13 @@ test.describe('Dev Forge URL Tool工具页面', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    // 验证页面标题
-    await expect(page).toHaveTitle(/URL/);
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
     
-    // 验证主要元素存在
+    // 验证模块名称显示
+    await expect(page.getByText('URL Tool').first()).toBeVisible();
+    
+    // 验证主要功能元素存在
     const urlInputElement = page.locator(urlInput);
     if (await urlInputElement.count() > 0) {
       await expect(urlInputElement.first()).toBeVisible();

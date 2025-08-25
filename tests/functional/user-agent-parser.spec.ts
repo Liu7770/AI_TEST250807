@@ -34,8 +34,11 @@ test.describe('Dev Forge User-Agent Parser工具页面', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    // 验证页面标题
-    await expect(page).toHaveTitle(/User.*Agent|Parser|解析/);
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
+    
+    // 验证模块名称显示
+    await expect(page.getByText('User-Agent Parser').first()).toBeVisible();
     
     // 验证User-Agent输入框存在
     const userAgentInputElement = page.locator(userAgentInput);

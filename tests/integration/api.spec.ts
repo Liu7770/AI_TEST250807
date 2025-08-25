@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TestHelpersV2, ErrorMessageFactory } from '../utils/test-helpers-v2';
 
 test.describe('Dev Forge API测试', () => {
 
@@ -209,7 +210,15 @@ test.describe('Dev Forge API测试', () => {
     // 验证所有请求都成功
     allResponses.forEach((responses, index) => {
       const failedRequests = responses.filter(r => r.status >= 400);
-      expect(failedRequests.length).toBe(0);
+      if (failedRequests.length > 0) {
+        const errorMessage = ErrorMessageFactory.create('assertion', {
+          testName: `并发请求测试 - 页面${index + 1}`,
+          expected: '所有请求状态码 < 400',
+          actual: `${failedRequests.length}个失败请求，状态码: ${failedRequests.map(r => r.status).join(', ')}`,
+          suggestion: '检查服务器负载能力，确认并发请求处理是否正常，查看网络连接状态'
+        });
+        throw new Error(errorMessage);
+      }
       console.log(`Page ${index + 1}: ${responses.length} requests, ${failedRequests.length} failed`);
     });
     
@@ -255,11 +264,23 @@ test.describe('Dev Forge API测试', () => {
       const result = await page.locator('pre').textContent();
       if (result) {
         // 验证结果包含输入的关键数据
-        if (testCase.input.includes('string')) {
-          expect(result).toContain('string');
+        if (testCase.input.includes('string') && !result.includes('string')) {
+          const errorMessage = ErrorMessageFactory.create('assertion', {
+            testName: `数据验证API测试 - ${testCase.description}`,
+            expected: '格式化结果包含"string"字段',
+            actual: result,
+            suggestion: '检查JSON格式化功能是否正确处理字符串类型数据'
+          });
+          throw new Error(errorMessage);
         }
-        if (testCase.input.includes('测试中文')) {
-          expect(result).toContain('测试中文');
+        if (testCase.input.includes('测试中文') && !result.includes('测试中文')) {
+          const errorMessage = ErrorMessageFactory.create('assertion', {
+            testName: `数据验证API测试 - ${testCase.description}`,
+            expected: '格式化结果包含中文字符"测试中文"',
+            actual: result,
+            suggestion: '检查JSON格式化功能是否正确处理Unicode字符'
+          });
+          throw new Error(errorMessage);
         }
       }
     }
@@ -285,12 +306,29 @@ test.describe('Dev Forge API测试', () => {
       const result = await page.locator('pre').textContent();
       if (result) {
         // JSON工具应该保持原始内容，但确保没有执行恶意脚本
-        expect(result).toContain('xss');
+        if (!result.includes('xss')) {
+          const errorMessage = ErrorMessageFactory.create('assertion', {
+            testName: 'API安全性测试 - XSS内容处理',
+            expected: '格式化结果包含"xss"字符串（但不执行脚本）',
+            actual: result,
+            suggestion: '检查JSON格式化功能是否正确处理包含脚本标签的内容'
+          });
+          throw new Error(errorMessage);
+        }
+        
         // 验证页面没有被XSS攻击（检查是否有alert弹窗）
         const hasAlert = await page.evaluate(() => {
           return typeof window.alert === 'function';
         });
-        expect(hasAlert).toBe(true); // alert函数应该存在但未被调用
+        if (!hasAlert) {
+          const errorMessage = ErrorMessageFactory.create('assertion', {
+            testName: 'API安全性测试 - XSS防护验证',
+            expected: 'alert函数存在但未被恶意调用',
+            actual: 'alert函数不存在或被修改',
+            suggestion: '检查页面是否被XSS攻击影响，确认安全防护机制正常工作'
+          });
+          throw new Error(errorMessage);
+        }
       }
     }
   });

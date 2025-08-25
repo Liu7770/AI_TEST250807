@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { TestHelpersV2 } from '../utils/test-helpers-v2';
+import { ErrorMessageFactory } from '../utils/test-helpers-v2';
 
 test.describe('JWT Decoder Tool 测试', () => {
 
@@ -16,82 +18,69 @@ test.describe('JWT Decoder Tool 测试', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    // 验证页面标题
+    // 验证页面标题包含Dev Forge
     await expect(page).toHaveTitle(/Dev Forge/);
     
-    // 验证主要元素存在
-    await expect(page.locator('h1')).toContainText('JWT Decoder');
+    // 验证模块名称显示
+    await expect(page.getByText('JWT Decoder').first()).toBeVisible();
     
-    // 验证输入框存在
-    const inputElement = page.locator(jwtInput);
-    await expect(inputElement).toBeVisible();
-    
-    // 验证解码按钮存在
-    const decodeBtn = page.locator(decodeButton);
-    await expect(decodeBtn).toBeVisible();
-    
-    // 验证清空按钮存在
-    const clearBtn = page.locator(clearButton);
-    await expect(clearBtn).toBeVisible();
+    // 验证主要功能元素存在
+    await expect(page.locator('textarea')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Decode' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
 
   test('有效JWT解码测试', async ({ page }) => {
-    const jwtInputElement = page.locator(jwtInput);
+    // 输入JWT
+    const inputElement = page.locator(jwtInput);
+    await inputElement.fill(validJWT);
     
-    if (await jwtInputElement.count() > 0) {
-      // 输入有效的JWT token
-      await jwtInputElement.first().fill(validJWT);
-      
-      // 点击解码按钮
-      const decodeBtn = page.locator(decodeButton);
-      if (await decodeBtn.count() > 0) {
-        await decodeBtn.first().click();
-      }
-      
-      // 验证Header部分显示
-      const headerElement = page.locator(headerSection);
-      if (await headerElement.count() > 0) {
-        await expect(headerElement.first()).toBeVisible();
-        const headerText = await headerElement.first().textContent();
-        expect(headerText).toContain('HS256');
-        expect(headerText).toContain('JWT');
-      }
-      
-      // 验证Payload部分显示
-      const payloadElement = page.locator(payloadSection);
-      if (await payloadElement.count() > 0) {
-        await expect(payloadElement.first()).toBeVisible();
-        const payloadText = await payloadElement.first().textContent();
-        expect(payloadText).toContain('John Doe');
-        expect(payloadText).toContain('1234567890');
-      }
-      
-      // 验证Signature部分显示
-      const signatureElement = page.locator(signatureSection);
-      if (await signatureElement.count() > 0) {
-        await expect(signatureElement.first()).toBeVisible();
-      }
+    // 点击解码按钮
+    const decodeBtn = page.locator(decodeButton);
+    await decodeBtn.click();
+    
+    // 验证解码结果
+    const resultElement = page.locator('.result, .output, pre').first();
+    await TestHelpersV2.assertElementVisible({
+      locator: resultElement,
+      elementName: 'JWT解码结果区域',
+      testName: 'JWT解码结果显示检查'
+    });
+    
+    const resultText = await resultElement.textContent();
+    if (!resultText || !resultText.includes('John Doe')) {
+      const errorMessage = ErrorMessageFactory.create('operation', {
+        testName: 'JWT解码功能',
+        operation: '解码有效JWT令牌',
+        expected: '包含"John Doe"的解码结果',
+        actual: resultText || '空结果',
+        suggestion: '检查JWT解码逻辑，确保能正确解析JWT payload中的用户信息'
+      });
+      throw new Error(errorMessage);
     }
   });
 
   test('无效JWT处理测试', async ({ page }) => {
-    const jwtInputElement = page.locator(jwtInput);
+    // 输入无效的JWT token
+    const invalidJWT = 'invalid.jwt.token';
+    await page.locator(jwtInput).fill(invalidJWT);
     
-    if (await jwtInputElement.count() > 0) {
-      // 输入无效的JWT token
-      await jwtInputElement.first().fill('invalid.jwt.token');
-      
-      // 点击解码按钮
-      const decodeBtn = page.locator(decodeButton);
-      if (await decodeBtn.count() > 0) {
-        await decodeBtn.first().click();
-      }
-      
-      // 验证错误提示显示
-      const errorMessage = page.locator('text=Invalid, text=Error, text=错误, text=无效');
-      if (await errorMessage.count() > 0) {
-        await expect(errorMessage.first()).toBeVisible();
-      }
+    // 点击解码按钮
+    await page.locator(decodeButton).click();
+    
+    // 验证错误提示显示
+    const errorMessageLocator = page.locator('text=Invalid').or(page.locator('text=Error')).or(page.locator('text=错误')).or(page.locator('text=无效'));
+    const errorVisible = await errorMessageLocator.isVisible();
+    
+    if (!errorVisible) {
+      const errorMessage = ErrorMessageFactory.create('assertion', {
+        testName: '无效JWT处理测试',
+        input: '验证无效JWT的错误提示显示',
+        expected: '应该显示JWT无效的错误提示信息',
+        actual: '未找到错误提示信息',
+        suggestion: 'JWT解码器应该能够识别并提示无效的JWT格式，提升用户体验。'
+      });
+      throw new Error(errorMessage);
     }
   });
 

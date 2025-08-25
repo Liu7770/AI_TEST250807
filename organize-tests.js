@@ -6,23 +6,24 @@ const { chromium } = require('playwright');
 const moduleUrls = {
   'base-converter.spec.ts': 'https://www.001236.xyz/en/base',
   'color-converter.spec.ts': 'https://www.001236.xyz/en/color',
-  'data-converter.spec.ts': 'https://www.001236.xyz/en/data',
+  'data-converter.spec.ts': 'https://www.001236.xyz/en/convert',
   'jwt-decoder.spec.ts': 'https://www.001236.xyz/en/jwt',
   'url-tool.spec.ts': 'https://www.001236.xyz/en/url',
   'password-generator.spec.ts': 'https://www.001236.xyz/en/password',
-  'code-beautifier.spec.ts': 'https://www.001236.xyz/en/beautify',
+  'code-beautifier.spec.ts': 'https://www.001236.xyz/en/beautifier',
   'sql-formatter.spec.ts': 'https://www.001236.xyz/en/sql',
-  'image-to-base64.spec.ts': 'https://www.001236.xyz/en/image',
+  'image-to-base64.spec.ts': 'https://www.001236.xyz/en/image2base64',
   'http-status-lookup.spec.ts': 'https://www.001236.xyz/en/http-status',
   'user-agent-parser.spec.ts': 'https://www.001236.xyz/en/user-agent',
-  'timestamp.spec.ts': 'https://www.001236.xyz/en/timestamp',
+  'timestamp-tool.spec.ts': 'https://www.001236.xyz/en/timestamp',
   'dashboard.spec.ts': 'https://www.001236.xyz/en',
   'uuid-generator.spec.ts': 'https://www.001236.xyz/en/uuid',
   'hash-calculator.spec.ts': 'https://www.001236.xyz/en/hash',
-  'crontab-tool.spec.ts': 'https://www.001236.xyz/en/cron',
+  'crontab-tool.spec.ts': 'https://www.001236.xyz/en/crontab',
   'dev-forge-tools.spec.ts': 'https://www.001236.xyz/en',
   'base64-tool.spec.ts': 'https://www.001236.xyz/en/base64',
-  'json-tool.spec.ts': 'https://www.001236.xyz/en/json'
+  'json-tool.spec.ts': 'https://www.001236.xyz/en/json',
+  'dns-resolver.spec.ts': 'https://www.001236.xyz/en/dns'
 };
 
 // 已实现的模块列表（根据用户指正）

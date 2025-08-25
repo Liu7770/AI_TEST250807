@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { TestHelpers } from '../utils/test-helpers';
+import { TestHelpersV2 } from '../utils/test-helpers-v2';
+import { ErrorMessageFactory } from '../utils/test-helpers-v2';
 
 test.describe('UUID Generator Tool 测试', () => {
 
@@ -19,36 +20,53 @@ test.describe('UUID Generator Tool 测试', () => {
   });
 
   test('页面基本元素存在性测试', async ({ page }) => {
-    const helpers = new TestHelpers(page);
+    // 验证页面标题包含Dev Forge
+    await expect(page).toHaveTitle(/Dev Forge/);
     
-    // 验证页面标题
-    await helpers.assertPageTitle(/Dev Forge/);
+    // 验证模块名称显示
+    await expect(page.getByText('UUID Generator').first()).toBeVisible();
     
-    // 验证主要元素存在
-    await helpers.assertElementVisible('h1', '主标题');
-    
-    // 验证生成按钮存在
-    await helpers.assertElementVisible(generateButton, '生成按钮');
-    
-    // 验证清空按钮存在
-    await helpers.assertElementVisible(clearButton, '清空按钮');
-    
-    // 验证数量输入框存在
-    await helpers.assertElementVisible(countInput, '数量输入框');
-    
-    // 验证格式选择按钮存在
-    await helpers.assertElementVisible(uuidFormatButton, 'UUID格式按钮');
-    await helpers.assertElementVisible(guidFormatButton, 'GUID格式按钮');
+    // 验证主要功能元素存在
+    await expect(page.locator('select')).toBeVisible();
+    await expect(page.locator('input[type="number"]')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Generate' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear' })).toBeVisible();
   });
 
   test('UUID v4生成测试', async ({ page }) => {
-    const helper = new TestHelpers(page);
+    // 执行 UUID 生成
+    await page.click(generateButton);
     
-    // 生成UUID
-    await helper.performUuidGeneration();
+    // 验证 UUID 输出
+    const outputElement = page.locator(uuidOutput);
+    const uuidText = await outputElement.textContent();
     
-    // 验证UUID输出
-    await helper.assertUuidGenerated(uuidOutput, 'uuid', 'UUID v4生成测试');
+    if (!uuidText || uuidText.trim().length === 0) {
+      const errorMessage = ErrorMessageFactory.create('operation', {
+        testName: 'UUID生成',
+        operation: '点击生成按钮',
+        expected: '生成有效的UUID',
+        actual: uuidText || '空值',
+        suggestion: '检查UUID生成逻辑，确保能正常生成UUID'
+      });
+      throw new Error(errorMessage);
+    }
+    
+    // 验证 UUID 格式（基本格式检查）
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const lines = uuidText.trim().split('\n');
+    const firstUuid = lines[0]?.trim();
+    
+    if (!firstUuid || !uuidPattern.test(firstUuid)) {
+      const errorMessage = ErrorMessageFactory.create('validation', {
+        testName: 'UUID格式验证',
+        scenario: '生成UUID v4格式',
+        expected: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx格式',
+        actual: `生成的UUID: "${firstUuid}"`,
+        suggestion: '检查UUID v4格式生成逻辑，确保符合标准格式'
+      });
+      throw new Error(errorMessage);
+    }
   });
 
   test('多个UUID生成测试', async ({ page }) => {

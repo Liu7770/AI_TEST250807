@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from '@playwright/test';
+import { DebugHelper } from './debug-helper';
 
 /**
  * 错误消息类型枚举
@@ -47,17 +48,42 @@ class ErrorMessageFactory {
   }
 
   /**
+   * 创建测试失败消息 - 包含详细的实际值和期望值对比
+   */
+  static createTestFailureMessage(
+    testName: string,
+    checkDescription: string,
+    expected: string,
+    actual: string,
+    suggestion: string
+  ): string {
+    return [
+      `🐛 ${testName}失败！`,
+      `❌ ${checkDescription}`,
+      `期望结果: ${expected}`,
+      `实际结果: ${actual}`,
+      `🔧 建议: ${suggestion}`
+    ].join('\n');
+  }
+
+  /**
    * 创建断言错误消息
    */
   private static createAssertionError(options: ErrorMessageOptions): string {
     const { testName, input, expected, actual, suggestion } = options;
     
     return [
-      `🐛 ${testName}功能存在缺陷！`,
+      `🐛 ${testName}失败！`,
       input ? `📝 测试输入: "${input}"` : '',
-      expected ? `✅ 预期输出: "${expected}"` : '',
-      actual ? `❌ 实际输出: "${actual}"` : '',
-      `🔧 建议: ${suggestion}`
+      expected ? `✅ 期望结果: "${expected}"` : '',
+      actual ? `❌ 实际结果: "${actual}"` : '',
+      `🔧 修复建议: ${suggestion}`,
+      ``,
+      `📋 调试步骤:`,
+      `  1. 检查元素选择器是否正确`,
+      `  2. 确认页面加载完成`,
+      `  3. 验证输入数据格式`,
+      `  4. 查看浏览器控制台错误`
     ].filter(Boolean).join('\n');
   }
 
@@ -154,6 +180,64 @@ abstract class BaseAssertion {
   protected abstract createErrorMessage(): string;
 
   /**
+   * 处理测试失败 - 启动调试模式
+   */
+  protected async handleTestFailure(): Promise<void> {
+    try {
+      const currentUrl = await this.getCurrentUrl();
+      const debugInfo = await this.gatherDebugInfo();
+      
+      console.log(`\n🐛 测试失败调试信息:`);
+      console.log(`📍 测试名称: ${this.config.testName}`);
+      console.log(`🌐 当前页面: ${currentUrl}`);
+      console.log(`⏰ 超时设置: ${this.config.timeout}ms`);
+      console.log(`🔄 重试次数: ${this.config.retryCount}`);
+      
+      if (debugInfo.consoleLogs.length > 0) {
+        console.log(`📋 控制台错误:`);
+        debugInfo.consoleLogs.forEach(log => console.log(`  - ${log}`));
+      }
+      
+      console.log(`\n🔧 调试建议:`);
+      console.log(`  1. 手动访问页面: ${currentUrl}`);
+      console.log(`  2. 检查元素选择器是否正确`);
+      console.log(`  3. 确认页面加载完成`);
+      console.log(`  4. 查看浏览器控制台错误`);
+      console.log(`  5. 检查网络请求是否成功`);
+      
+    } catch (error) {
+      console.log(`❌ 调试信息收集失败: ${error}`);
+    }
+  }
+
+  /**
+   * 获取当前页面URL
+   */
+  protected async getCurrentUrl(): Promise<string> {
+    try {
+      // 这里需要子类提供page对象
+      return 'unknown-url';
+    } catch {
+      return 'unknown-url';
+    }
+  }
+
+  /**
+   * 收集调试信息
+   */
+  protected async gatherDebugInfo(): Promise<{
+    consoleLogs: string[];
+    networkErrors: string[];
+    pageState: string;
+  }> {
+    return {
+      consoleLogs: [],
+      networkErrors: [],
+      pageState: 'unknown'
+    };
+  }
+
+  /**
    * 执行断言的公共方法
    */
   async assert(): Promise<void> {
@@ -171,14 +255,15 @@ abstract class BaseAssertion {
       }
     }
     
-    // 所有重试都失败，抛出自定义错误消息
+    // 所有重试都失败，启动调试模式并抛出自定义错误消息
+    await this.handleTestFailure();
     throw new Error(this.createErrorMessage());
   }
 
   /**
    * 延迟工具方法
    */
-  private delay(ms: number): Promise<void> {
+  protected delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
@@ -551,6 +636,117 @@ export class TestHelpersV2 {
   }
 
   /**
+   * 代码美化断言 - 专门用于代码格式化工具测试
+   */
+  static async assertCodeBeautification({
+    page,
+    inputCode,
+    expectedOutputPattern,
+    testName = '代码美化功能测试',
+    config = {}
+  }: {
+    page: Page;
+    inputCode: string;
+    expectedOutputPattern: RegExp;
+    testName?: string;
+    config?: AssertionConfig;
+  }) {
+    class CodeBeautificationAssertion extends BaseAssertion {
+      constructor(
+        private page: Page,
+        private inputCode: string,
+        private expectedOutputPattern: RegExp,
+        config: AssertionConfig
+      ) {
+        super({ testName, ...config });
+      }
+
+      protected async getCurrentUrl(): Promise<string> {
+        try {
+          return await this.page.url();
+        } catch {
+          return 'unknown-url';
+        }
+      }
+
+      protected async gatherDebugInfo(): Promise<{
+        consoleLogs: string[];
+        networkErrors: string[];
+        pageState: string;
+      }> {
+        try {
+          const inputTextarea = this.page.locator('textarea[placeholder="Paste or enter code to beautify"]');
+          const outputTextarea = this.page.locator('textarea[placeholder="Beautified code will be displayed here"]');
+          const formatButton = this.page.locator('button:has-text("Format")');
+          
+          const inputVisible = await inputTextarea.isVisible().catch(() => false);
+          const outputVisible = await outputTextarea.isVisible().catch(() => false);
+          const buttonVisible = await formatButton.isVisible().catch(() => false);
+          const buttonEnabled = await formatButton.isEnabled().catch(() => false);
+          
+          const inputValue = await inputTextarea.inputValue().catch(() => '');
+          const outputValue = await outputTextarea.inputValue().catch(() => '');
+          
+          return {
+            consoleLogs: [
+              `输入框可见: ${inputVisible}`,
+              `输出框可见: ${outputVisible}`,
+              `格式化按钮可见: ${buttonVisible}`,
+              `格式化按钮启用: ${buttonEnabled}`,
+              `输入内容: "${inputValue}"`,
+              `输出内容: "${outputValue}"`,
+              `期望模式: ${this.expectedOutputPattern.toString()}`
+            ],
+            networkErrors: [],
+            pageState: 'code-beautification-check'
+          };
+        } catch (error) {
+          return {
+            consoleLogs: [`调试信息收集失败: ${error}`],
+            networkErrors: [],
+            pageState: 'error'
+          };
+        }
+      }
+
+      protected async executeAssertion(): Promise<void> {
+        // 输入代码
+        const inputTextarea = this.page.locator('textarea[placeholder="Paste or enter code to beautify"]');
+        await inputTextarea.fill(this.inputCode);
+        
+        // 点击格式化按钮
+        const formatButton = this.page.locator('button:has-text("Format")');
+        await formatButton.click();
+        
+        // 等待格式化完成
+        await this.page.waitForTimeout(2000);
+        
+        // 获取输出结果
+        const outputTextarea = this.page.locator('textarea[placeholder="Beautified code will be displayed here"]');
+        const actualOutput = await outputTextarea.inputValue();
+        
+        // 验证输出是否符合期望模式
+        if (!this.expectedOutputPattern.test(actualOutput)) {
+          throw new Error(`代码美化验证失败: 期望模式 "${this.expectedOutputPattern.toString()}", 实际输出 "${actualOutput}"`);
+        }
+      }
+
+      protected createErrorMessage(): string {
+        return ErrorMessageFactory.create('assertion', {
+          testName: this.config.testName!,
+          input: this.inputCode,
+          expected: this.expectedOutputPattern.toString(),
+          actual: '检查调试信息中的输出内容',
+          suggestion: '检查代码格式化逻辑是否正确，确认输入代码格式和期望输出格式，验证网络连接和页面加载状态'
+        });
+      }
+    }
+
+    const assertion = new CodeBeautificationAssertion(page, inputCode, expectedOutputPattern, config);
+    await assertion.assert();
+  }
+
+  /**
    * 空输入处理验证 - 优化版本
    */
   static async validateEmptyInputHandling({
@@ -627,6 +823,45 @@ export class TestHelpersV2 {
         super({ testName, ...config });
       }
 
+      protected async getCurrentUrl(): Promise<string> {
+        try {
+          return await this.page.url();
+        } catch {
+          return 'unknown-url';
+        }
+      }
+
+      protected async gatherDebugInfo(): Promise<{
+        consoleLogs: string[];
+        networkErrors: string[];
+        pageState: string;
+      }> {
+        try {
+          const button = this.page.locator(this.buttonSelector);
+          const isVisible = await button.isVisible().catch(() => false);
+          const isEnabled = await button.isEnabled().catch(() => false);
+          const isDisabled = await button.isDisabled().catch(() => true);
+          
+          return {
+            consoleLogs: [
+              `按钮选择器: ${this.buttonSelector}`,
+              `按钮可见: ${isVisible}`,
+              `按钮启用: ${isEnabled}`,
+              `按钮禁用: ${isDisabled}`,
+              `期望禁用: ${this.expectedDisabled}`
+            ],
+            networkErrors: [],
+            pageState: `button-state-check`
+          };
+        } catch (error) {
+          return {
+            consoleLogs: [`调试信息收集失败: ${error}`],
+            networkErrors: [],
+            pageState: 'error'
+          };
+        }
+      }
+
       protected async executeAssertion(): Promise<void> {
         const button = this.page.locator(this.buttonSelector);
         if (this.expectedDisabled) {
@@ -681,6 +916,35 @@ export class TestHelpersV2 {
 
     const assertion = new ButtonStateAssertion(page, buttonSelector, buttonText, expectedDisabled, config);
     await assertion.assert();
+  }
+
+  /**
+   * 静态方法 - 页面标题断言
+   */
+  static async assertPageTitle({
+    page,
+    expectedTitlePattern,
+    testName = '页面标题检查',
+    config = {}
+  }: {
+    page: Page;
+    expectedTitlePattern: string | RegExp;
+    testName?: string;
+    config?: AssertionConfig;
+  }) {
+    const actualTitle = await page.title();
+    const expectedStr = typeof expectedTitlePattern === 'string' 
+      ? expectedTitlePattern 
+      : expectedTitlePattern.toString();
+    
+    const errorMessage = ErrorMessageFactory.create('assertion', {
+      testName,
+      expected: expectedStr,
+      actual: actualTitle,
+      suggestion: '请检查页面是否正确加载，或标题是否被正确设置'
+    });
+
+    await expect(page, errorMessage).toHaveTitle(expectedTitlePattern);
   }
 
   /**
